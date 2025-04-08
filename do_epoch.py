@@ -37,8 +37,8 @@ def conduct_mutation(network: nn.Module, eons_params:dict) -> tuple[nn.Module, b
     delete_node = np.random.choice([0, 1], 1, p=[1-delete_node_rate, delete_node_rate]).item() # Determine whether to delete a node or not
     add_edge = np.random.choice([0, 1], 1, p=[1-add_edge_rate, add_edge_rate]).item() # Determine whether to add an edge or not
     delete_edge = np.random.choice([0, 1], 1, p=[1-delete_edge_rate, delete_edge_rate]).item() # Determine whether to delete an edge or not
-    change_node_param = np.random.choice([0, 1], 1, p=[1-node_param_rate, node_param_rate]).item() # Determine whether to change node weights or not
-    change_edge_param = np.random.choice([0, 1], 1, p=[1-edge_param_rate, edge_param_rate]).item() # Determine whether to change edge weights or not
+    update_node_param = np.random.choice([0, 1], 1, p=[1-node_param_rate, node_param_rate]).item() # Determine whether to change node weights or not
+    update_edge_param = np.random.choice([0, 1], 1, p=[1-edge_param_rate, edge_param_rate]).item() # Determine whether to change edge weights or not
 
 
     if add_node:
@@ -61,12 +61,12 @@ def conduct_mutation(network: nn.Module, eons_params:dict) -> tuple[nn.Module, b
 
         has_mutated = True
 
-    if change_node_param:
+    if update_node_param:
         # Will put in a function to change node weights here
 
         has_mutated = True
 
-    if change_edge_param:
+    if update_edge_param:
         # Will put in a function to change edge weights here
 
         has_mutated = True
