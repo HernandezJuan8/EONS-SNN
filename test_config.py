@@ -39,9 +39,10 @@ def getHyperParameters(config: configparser)->dict:
 
 
 
-if __name__ == "__main__":
+""" if __name__ == "__main__":
     config = configparser.ConfigParser()
     config.read('config.ini')
     hyperparameters = getHyperParameters(config)
     print(hyperparameters)
 
+ """
