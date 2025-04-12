@@ -1,28 +1,21 @@
+# snnTorch Imporst
+from snntorch import surrogate
+
+# Torch Imports
 import torch.nn as nn
+
+# Python Library Imports
 import configparser
-from test_config import getHyperParameters
 import numpy as np
 
-# Example of a simple neural network in PyTorch
-class SimpleNN(nn.Module):
-    def __init__(self):
-        super(SimpleNN, self).__init__()
-        self.layer1 = nn.Linear(10, 128)  # 10 input features (for age, gender, etc.)
-        self.layer2 = nn.Linear(128, 64)
-        self.layer3 = nn.Linear(64, 32)
-        self.output = nn.Linear(32, 1)  # Output: binary classification (0 or 1)
-        self.relu = nn.ReLU()
-        self.sigmoid = nn.Sigmoid()
+# Script Imporst
+from test_config import getHyperParameters
+from EONS import EONS
+from crossover import crossover
 
-    def forward(self, x):
-        x = self.relu(self.layer1(x))
-        x = self.relu(self.layer2(x))
-        x = self.relu(self.layer3(x))
-        x = self.sigmoid(self.output(x))
-        return x
     
 
-def conduct_mutation(network: nn.Module, eons_params:dict) -> tuple[nn.Module, bool]:
+def conduct_mutation(network: EONS, eons_params:dict) -> tuple[nn.Module, bool]:
     add_node_rate = eons_params['add_node_rate'] # Probability of adding a node
     delete_node_rate = eons_params['delete_node_rate'] # Probability of deleting a node
     add_edge_rate = eons_params['add_edge_rate'] # Probablity of adding a edge
@@ -42,41 +35,34 @@ def conduct_mutation(network: nn.Module, eons_params:dict) -> tuple[nn.Module, b
 
 
     if add_node:
-        # Will put in a function to add a node to the network here
-
+        network.add_node()
         has_mutated = True
 
     if delete_node:
-        # Will put in a function to delete a node to the network here
-
+        network.remove_node()
         has_mutated = True
 
     if add_edge:
-        # Will put in a function to add an edge here
-
+        network.add_edge()
         has_mutated = True
 
     if delete_edge:
-        # Will put in a function to delete an edge here
-
+        network.remove_edge()
         has_mutated = True
 
     if update_node_param:
-        # Will put in a function to change node weights here
-
+        network.update_node_param()
         has_mutated = True
 
     if update_edge_param:
-        # Will put in a function to change edge weights here
-
+        network.update_edge_param()
         has_mutated = True
-
 
     return mutated_network, has_mutated
 
 
 # I am currently assuming the data type of these variables, will edit them if needed
-def do_epoch(pop: list[nn.Module], fits: list[float], eons_params:dict)->list[nn.Module]:
+def do_epoch(pop: list[EONS], fits: list[float], eons_params:dict)->list[nn.Module]:
     """
     The purpose of this function is to determine the top k networks in the current population as
     well as apply any mutations
@@ -122,7 +108,7 @@ def do_epoch(pop: list[nn.Module], fits: list[float], eons_params:dict)->list[nn
     
 
     
-    next_gen_idx = 0 # Track index of current network
+    curr_idx = 0 # Track index of current network
     for network in next_gen:
         do_crossover = np.random.choice([0, 1], 1, p=[1-crossover_rate, crossover_rate]).item() # Determine whether to do crossover or not
         num_cross = 0 # Track how many crossovers have occurred
@@ -134,11 +120,11 @@ def do_epoch(pop: list[nn.Module], fits: list[float], eons_params:dict)->list[nn
                 merge_with_idx = np.random.choice([x for x in range(len(next_gen))], 1, p=[1/len(next_gen) for x in range(len(next_gen))]).item()
 
                 # Only conduct crossover if the randomly selected network is not the same as the current one
-                if (merge_with_idx != next_gen_idx):
+                if (merge_with_idx != curr_idx):
                     num_cross += 1
-                    # Create function to conduct crossover and append results to next_gen
+                    crossover(next_gen[curr_idx], next_gen[merge_with_idx])
                 
-            next_gen_idx += 1
+        curr_idx += 1
 
 
 
@@ -172,19 +158,7 @@ What needs to be done:
 
 if __name__ == "__main__":
     # Use this to test selection of best network based on fitness function
-    """ net1 = SimpleNN()
-    net2 = SimpleNN()
-    net3 = SimpleNN()
-    net4 = SimpleNN()
-    net5 = SimpleNN()
-    net6 = SimpleNN()
-    net7 = SimpleNN()
-    net8 = SimpleNN()
-    net9 = SimpleNN()
-    net10 = SimpleNN()
-    net11 = SimpleNN()
-    net12 = SimpleNN()
-
+    """
     pop = [net1, net2, net3, net4, net5, net6, net7, net8, net9, net10, net11, net12]
     fits = [0.35, 0.21, 0.62, 0.87, 0.12, 0.32, 0.55, 0.84, 0.52, 0.88, 0.11, 0.77]
     config = configparser.ConfigParser()
@@ -195,5 +169,71 @@ if __name__ == "__main__":
 
     print(pop)
  """
+    params1 = {
+        "nin": 40,
+        "nout": 20,
+        "rand_range_start": 1,
+        "rand_range_end": 10,
+        "beta": 0.95,
+        "spike_grad": surrogate.fast_sigmoid(slope=25),
+    }
+    params2 = {
+        "nin": 9,
+        "nout": 5,
+        "rand_range_start": 1,
+        "rand_range_end": 10,
+        "beta": 0.95,
+        "spike_grad": surrogate.fast_sigmoid(slope=25),
+    }
+    params3 = {
+        "nin": 27,
+        "nout": 15,
+        "rand_range_start": 1,
+        "rand_range_end": 10,
+        "beta": 0.95,
+        "spike_grad": surrogate.fast_sigmoid(slope=25),
+    }
+    params4 = {
+        "nin": 80,
+        "nout": 10,
+        "rand_range_start": 1,
+        "rand_range_end": 10,
+        "beta": 0.95,
+        "spike_grad": surrogate.fast_sigmoid(slope=25),
+    }
+    params5 = {
+        "nin": 60,
+        "nout": 20,
+        "rand_range_start": 1,
+        "rand_range_end": 10,
+        "beta": 0.95,
+        "spike_grad": surrogate.fast_sigmoid(slope=25),
+    }
+
     # Use this to test mutations
-    # *insert test code later* 
+    eon1 = EONS(params1)
+    eon1.make_template_network()
+
+    eon2 = EONS(params2)
+    eon2.make_template_network()
+
+    eon3 = EONS(params3)
+    eon3.make_template_network()
+
+    eon4 = EONS(params4)
+    eon4.make_template_network()
+
+    eon5 = EONS(params5)
+    eon5.make_template_network()
+
+    pop = [eon1, eon2, eon3, eon4, eon5]
+    fits = [0.35, 0.21, 0.62, 0.87, 0.12]
+    config = configparser.ConfigParser()
+    config.read('config.ini')
+    hyperparameters = getHyperParameters(config)
+
+    pop = do_epoch(pop, fits, hyperparameters)
+
+    # for network in pop:
+    #     print(network.template_network)
+
