@@ -233,7 +233,7 @@ if __name__ == "__main__":
     hyperparameters = getHyperParameters(config)
 
     pop = do_epoch(pop, fits, hyperparameters)
-
+    print(len(pop))
     # for network in pop:
     #     print(network.template_network)
 

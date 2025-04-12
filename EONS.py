@@ -71,6 +71,7 @@ class EONS:
         linear = self.template_network[selected_index]
         next_linear = self.template_network[next_index]
 
+
         in_feat= linear.in_features # Keeping in features the same
         new_out_feat = linear.out_features + 1 # Adding neuron to the out
 
@@ -79,29 +80,50 @@ class EONS:
 
         # Repeat for the next hidden layer. This ensures that the output of prev layer matches input of next layer
         next_out = next_linear.out_features
-        new_next_linear = nn.Linear(new_out_feat, next_out)
+        new_next_linear = nn.Linear(new_out_feat, next_out)    
+
+        linear = self.fix_layer(linear)
+        next_linear = self.fix_layer(next_linear)
+
+        # print("==========================ADD NODE=========================================")
+        # print(linear)
+        # print(linear.weight.shape)
+        # print(linear.weight.shape[0], linear.weight.shape[1])
+        # print(linear.out_features, linear.in_features)
+        # print(new_linear.weight.shape)
+        # print(new_out_feat, in_feat)
+        # print(new_linear.weight[:linear.weight.shape[0], :linear.weight.shape[1]], flush=True)
+        # print(linear.weight, flush=True)
+        # print(linear.out_features)
+        # print(new_linear.bias[:linear.weight.shape[1]])
+        # print(linear.bias)
+        # print("\n\n")
+        # print(new_linear)
+        # print(new_linear.weight.shape)
+        # print(new_linear.weight.shape[0], new_linear.weight.shape[1])
+        # print(new_linear.out_features, new_linear.in_features)
+        # print(new_linear.in_features)
+        # print(new_next_linear.weight[:next_linear.weight.shape[0], :next_linear.weight.shape[1]], flush=True)
+        # print(next_linear.weight, flush=True)
+        # print(new_linear.out_features)
+        # print(new_next_linear.bias[:next_linear.weight.shape[1]])
+        # print(new_linear.bias)
+        # print("==========================ADD NODE=========================================")
         
+        # Ensuring it keeps the same weights and biases
+        # Weight shape = [out_features, in_features]
+        with torch.no_grad():
+            new_linear.weight[:linear.weight.shape[0], :linear.weight.shape[1]].copy_(linear.weight)
+            new_linear.bias[:linear.weight.shape[0]].copy_(linear.bias)
+        
+        with torch.no_grad():
+            new_next_linear.weight[:next_linear.weight.shape[0], :next_linear.weight.shape[1]].copy_(next_linear.weight)
+            new_next_linear.bias[:next_linear.weight.shape[0]].copy_(next_linear.bias)
+
         # Replacing both layers in the sequential
         layers = list(self.template_network)
         layers[selected_index] = new_linear
-        layers[next_index] = new_next_linear
-
-
-        print(new_linear.weight[:linear.out_features], flush=True)
-        print(linear.weight, flush=True)
-        print("\n\n")
-        print(new_linear.in_features)
-        print(new_next_linear.weight[:, :new_linear.weight.shape[1]], flush=True)
-        print(next_linear.weight, flush=True)
-
-        # Ensuring it keeps the same weights and biases
-        with torch.no_grad():
-             new_linear.weight[:linear.out_features] = linear.weight # Copies weights from old layer to new one
-             new_linear.bias[:linear.out_features] = linear.bias # Copies bias value
-        
-        with torch.no_grad():
-            new_next_linear.weight[:, :new_linear.weight.shape[1]] = next_linear.weight # Copies all output rows, but only the first new_out_feat input columns
-            new_next_linear.bias = next_linear.bias # Copies biases for output layer neuron
+        layers[next_index] = new_next_linear 
         
         self.template_network = nn.Sequential(*layers)
         print(f"Added a neuron to output of layer {selected_index} and updated input to layer {next_index}")
@@ -150,24 +172,49 @@ class EONS:
         next_out = next_linear.out_features
         new_next_linear = nn.Linear(new_out_feat, next_out) 
 
+        linear = self.fix_layer(linear)
+        next_linear = self.fix_layer(next_linear)
+
+
+        # print("==========================REMOVE NODE=========================================")
+        # print(linear)
+        # print(linear.weight.shape)
+        # print(linear.weight.shape[0], linear.weight.shape[1])
+        # print(linear.out_features, linear.in_features)
+        # print(new_linear.weight.shape)
+        # print(new_out_feat, in_feat)
+        # print(new_linear.weight, flush=True)
+        # print(linear.weight[:new_linear.weight.shape[0], :new_linear.weight.shape[1]], flush=True)
+        # print(linear.out_features)
+        # print(new_linear.bias)
+        # print(linear.bias)
+        # print("\n\n")
+        # print(new_linear)
+        # print(new_linear.weight.shape)
+        # print(new_linear.weight.shape[0], new_linear.weight.shape[1])
+        # print(new_linear.out_features, new_linear.in_features)
+        # print(new_linear.in_features)
+        # print(new_next_linear.weight, flush=True)
+        # print(next_linear.weight, flush=True)
+        # print(new_linear.out_features)
+        # print(next_linear.bias[:new_next_linear.out_features])
+        # print(new_linear.bias)
+        # print("==========================REMOVE NODE=========================================")
+
+        # Ensuring it keeps the same weights and biases
+        # Weight shape = [out_features, in_features]
+        with torch.no_grad():
+            new_linear.weight.copy_(linear.weight[:new_linear.weight.shape[0], :new_linear.weight.shape[1]])
+            new_linear.bias.copy_(linear.bias[:new_linear.out_features])
+        
+        with torch.no_grad():
+            new_next_linear.weight.copy_(next_linear.weight[:new_next_linear.weight.shape[0], :(new_next_linear.weight.shape[1])])
+            new_next_linear.bias.copy_(next_linear.bias[:new_next_linear.out_features])
+
         # Replacing both layers in the sequential
         layers = list(self.template_network)
         layers[selected_index] = new_linear
         layers[next_index] = new_next_linear
-
-
-        # print(new_linear.weight[:, :], flush=True)
-        # print(linear.weight[:new_out_feat, :linear.in_features], flush=True)
-
-
-        # Ensuring it keeps the same weights and biases
-        with torch.no_grad():
-             new_linear.weight[:, :] = linear.weight[:new_out_feat, :linear.in_features] # Keep the first N-1 neurons' weights
-             new_linear.bias[:] = linear.bias[:new_out_feat] # Copies bias values except the one being removed
-
-        with torch.no_grad():
-            new_next_linear.weight[:, :new_out_feat] = next_linear.weight[:, :new_out_feat] # Copies all output rows, but only the first new_out_feat input columns
-            new_next_linear.bias = next_linear.bias # Copies biases for output layer neuron
         
         self.template_network = nn.Sequential(*layers) # Update network
         print(f"Removed a neuron to output of layer {selected_index} and updated input to layer {next_index}")
@@ -317,14 +364,30 @@ class EONS:
 
         # Ensure there are enough input and output neurons before proceeding
         if linear_layer.in_features <= 1 or linear_layer.out_features <= 1:
-            print(f"Layer at index {selected_index} does not have enough neurons. Skipping.")
+            print(f"Layer at index {selected_index} does not have enough neurons. Trying again.")
             self.update_edge_param()
             return
+        
+        # Fixing linear layer in case of any weight to feature mismatches
+        linear_layer = self.fix_layer(linear_layer)
 
         # Select random neuron indices for both the input and output neurons
-        input_neuron_index = random.choice(range(linear_layer.in_features-1))  # Random input neuron
-        output_neuron_index = random.choice(range(linear_layer.out_features-1))  # Random output neuron
+        input_neuron_index = random.choice(range(linear_layer.in_features))  # Random input neuron
+        output_neuron_index = random.choice(range(linear_layer.out_features))  # Random output neuron
 
+        # These two if statements make sure the index stay within range
+        # That is because random.choice picks a number between 2 digits, inclusive so [a, b]
+        if (input_neuron_index == linear_layer.in_features):
+            print(f'Input neuron index {input_neuron_index} is greater than {linear_layer.in_features}. Changing...')
+            input_neuron_index -= 1
+
+        if (output_neuron_index == linear_layer.out_features):
+            print(f'Output neuron index {output_neuron_index} is greater than {linear_layer.out_features}. Changing...')
+            output_neuron_index -= 1
+
+        # print(linear_layer.weight.shape)
+        # print(linear_layer.out_features, linear_layer.in_features)
+        # print(output_neuron_index, input_neuron_index)
 
         # Update the synapse weight (i.e., the connection between input neuron and output neuron)
         new_weight = torch.rand(1)  # Random weight for the synapse
@@ -373,6 +436,25 @@ class EONS:
 
 
                 layers[layer_idx+2] = modified_layer
+
+    def fix_layer(self, layer):
+        """
+        I was noticing that on some runs, the weight.shape matrix would not match
+        the features that were in the actual linear layer. This function's purpose
+        is to fix that mismatch.
+        """
+        correct_shape = (layer.out_features, layer.in_features)
+        if layer.weight.shape != correct_shape:
+            print(f"Fixing corrupted layer: {layer}", flush=True)
+            new_layer = nn.Linear(layer.in_features, layer.out_features)
+            with torch.no_grad():
+                # Copy as much as fits
+                rows = min(layer.weight.shape[0], new_layer.weight.shape[0])
+                cols = min(layer.weight.shape[1], new_layer.weight.shape[1])
+                new_layer.weight[:rows, :cols].copy_(layer.weight[:rows, :cols])
+                new_layer.bias[:rows].copy_(layer.bias[:rows])
+            return new_layer
+        return layer
         
 
 
