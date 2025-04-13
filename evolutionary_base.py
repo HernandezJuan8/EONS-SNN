@@ -1,96 +1,159 @@
 # --- SNN MODEL ---
+import numpy as np
+from snntorch import utils
 import torch
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from snntorch import functional as SF
 import torchvision
 import torchvision.transforms as transforms
 import snntorch as snn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # --- PARAMETERS ---
-n_samples = 100  # Use small set for speed
+n_samples = 128  # Use small set for speed
 time_steps = 25  # Number of time steps per sample
-input_size = 784
-hidden_size = 100
-output_size = 10
 
 class EvoSNN(nn.Module):
     def __init__(self, weights=None):
         super().__init__()
-        self.fc1 = nn.Linear(input_size, hidden_size, bias=False)
-        self.lif1 = snn.Leaky(beta=0.9)
+        self.net = nn.Sequential(
+            nn.Conv2d(1, 16, kernel_size=3, padding=1),  # Increase filters, reduce kernel size
+            nn.MaxPool2d(2),
+            snn.Leaky(beta=0.9, init_hidden=True),
 
-        self.fc2 = nn.Linear(hidden_size, output_size, bias=False)
-        self.lif2 = snn.Leaky(beta=0.9)
+            nn.Conv2d(16, 64, kernel_size=3, padding=1),  # Keep kernel size 3x3
+            nn.MaxPool2d(2),
+            snn.Leaky(beta=0.9, init_hidden=True),
 
+            nn.Flatten(),
+            nn.Linear(64 * 7 * 7, 128),  # More neurons in dense layer
+            snn.Leaky(beta=0.9, init_hidden=True),
+
+            nn.Linear(128, 10),
+            snn.Leaky(beta=0.9, init_hidden=True, output=True)
+        ).to(device)
+        self.net.eval()
         if weights is not None:
             self.set_weights(weights)
 
-    def forward(self, x_seq):
-        mem1 = self.lif1.init_leaky()
-        mem2 = self.lif2.init_leaky()
-        spk2_sum = 0
+    def getTotalNumberOfWeights(self):
+        return sum(p.numel() for p in self.net.parameters() if p.requires_grad)
 
-        for t in range(x_seq.size(0)):
-            cur_input = x_seq[t]
-            cur_input = self.fc1(cur_input)
-            spk1, mem1 = self.lif1(cur_input, mem1)
+    def forward_pass(self, num_steps, data):
+        mem_rec = []
+        spk_rec = []
+        utils.reset(self.net)  # resets hidden states for all LIF neurons in net
+        for step in range(num_steps):
+            spk_out, mem_out = self.net(data)
+            spk_rec.append(spk_out)
+            mem_rec.append(mem_out)
 
-            cur_hidden = self.fc2(spk1)
-            spk2, mem2 = self.lif2(cur_hidden, mem2)
-            spk2_sum += spk2
+        return torch.stack(spk_rec), torch.stack(mem_rec)
 
-        return spk2_sum  # spike count output
+    def batch_accuracy(self, train_loader, num_steps):
+        with torch.no_grad():
+            total = 0
+            acc = 0
+            train_loader = iter(train_loader)
+            for data, targets in train_loader:
+                data = data.to(device)
+                targets = targets.to(device)
+                spk_rec, _ = self.forward_pass(num_steps, data)
+
+                acc += SF.accuracy_rate(spk_rec, targets) * spk_rec.size(1)
+                total += spk_rec.size(1)
+            
+        return acc/total
+
 
     def get_weights(self):
-        return torch.cat([self.fc1.weight.data.flatten(), self.fc2.weight.data.flatten()]).cpu().numpy()
+        weights = []
+        for layer in self.net:
+            if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.Linear):
+                weights.append(layer.weight.data.flatten().cpu().numpy())
+                if layer.bias is not None:
+                    weights.append(layer.bias.data.flatten().cpu().numpy())
+        return np.concatenate(weights)
 
     def set_weights(self, flat_weights):
+        idx = 0
         with torch.no_grad():
-            w1_size = self.fc1.weight.numel()
-            w2_size = self.fc2.weight.numel()
+            for layer in self.net:
+                if isinstance(layer, nn.Conv2d) or isinstance(layer, nn.Linear):
+                    w_shape = layer.weight.shape
+                    w_numel = layer.weight.numel()
 
-            fc1_weights = torch.tensor(flat_weights[:w1_size]).reshape(self.fc1.weight.shape).to(device)
-            fc2_weights = torch.tensor(flat_weights[w1_size:w1_size + w2_size]).reshape(self.fc2.weight.shape).to(device)
+                    new_weights = torch.tensor(flat_weights[idx:idx + w_numel], dtype=layer.weight.dtype).reshape(w_shape)
+                    layer.weight.copy_(torch.tensor(new_weights, dtype=layer.weight.dtype))
+                    idx += w_numel
 
-            self.fc1.weight.copy_(fc1_weights)
-            self.fc2.weight.copy_(fc2_weights)
+                    if layer.bias is not None:
+                        b_shape = layer.bias.shape
+                        b_numel = layer.bias.numel()
+
+                        new_bias = torch.tensor(flat_weights[idx:idx + b_numel], dtype=layer.bias.dtype).reshape(b_shape)
+                        layer.bias.copy_(torch.tensor(new_bias, dtype=layer.bias.dtype))
+                        idx += b_numel
 
 # --- ENCODING FUNCTION ---
 def poisson_encode(img, time_steps):
     return (torch.rand((time_steps,) + img.shape).to(device) < img).float()
 
 def repeat_encode(img, time_steps):
+    return img.repeat(time_steps, 1)
+
+def repeat_encode_batch(img, time_steps):
+    # img: [batch, input_size] => [1, batch, input_size]
+    # Then repeat along time: [time, batch, input_size]
     return img.unsqueeze(0).repeat(time_steps, 1, 1)
 
 # --- LOAD MNIST SUBSET ---
-transform = transforms.Compose([transforms.ToTensor(), transforms.Lambda(lambda x: x.view(-1))])
-mnist_train = torchvision.datasets.MNIST(root='./data', train=True, transform=transform, download=True)
-train_loader = torch.utils.data.DataLoader(mnist_train, batch_size=1, shuffle=True)
-
-x_data = []
-y_data = []
-
-for i, (x, y) in enumerate(train_loader):
-    x_data.append(x.squeeze())
-    y_data.append(y.item())
-    if i + 1 >= n_samples:
-        break
-
-x_data = torch.stack(x_data).to(device)
-y_data = torch.tensor(y_data).to(device)
-
+transform = transforms.Compose([
+            transforms.Resize((28, 28)),
+            transforms.Grayscale(),
+            transforms.ToTensor(),
+            transforms.Normalize((0,), (1,))])
+mnist_train = torchvision.datasets.MNIST(root='./mnist', train=True, transform=transform, download=True)
+train_loader = torch.utils.data.DataLoader(mnist_train, batch_size=n_samples, shuffle=True, drop_last=True)
 model = EvoSNN(weights=None).to(device)
-def evaluate(individual):
+n_weights = model.getTotalNumberOfWeights()
+
+
+# Cache for same batch reuse
+cached_data = None
+cached_targets = None
+train_loader_temp = iter(train_loader)
+
+def get_next_batch():
+    global train_loader_temp
+    try:
+        data, targets = next(train_loader_temp)
+    except StopIteration:
+        # Reset the iterator when exhausted
+        train_loader_temp = iter(train_loader)
+        data, targets = next(train_loader_temp)
+    return data.to(device), targets.to(device)
+
+def evaluate(individual, use_same_data=False):
     model.set_weights(individual)
-    correct = 0
-    for i in range(n_samples):
-        img = x_data[i]
-        label = y_data[i]
-        spikes = repeat_encode(img, time_steps)
-        output_spikes = model(spikes)
-        prediction = output_spikes.argmax()
-        if prediction == label:
-            correct += 1
-    return (correct / n_samples,)
+    acc = 0
+    total = 0
+
+    global cached_data, cached_targets
+
+    if use_same_data:
+        if cached_data is None or cached_targets is None:
+            cached_data, cached_targets = get_next_batch()
+        data, targets = cached_data, cached_targets
+        spk_rec, _ = model.forward_pass(time_steps, data)
+        acc += SF.accuracy_rate(spk_rec, targets) * spk_rec.size(1)
+        total += spk_rec.size(1)
+    else:
+        data, targets = get_next_batch()
+        spk_rec, _ = model.forward_pass(time_steps, data)
+        acc += SF.accuracy_rate(spk_rec, targets) * spk_rec.size(1)
+        total += spk_rec.size(1)
+
+    return (acc / total,)
