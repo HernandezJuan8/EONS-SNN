@@ -40,8 +40,8 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 toolbox.register("evaluate", evaluate)
 toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutGaussian, mu=0.0, sigma=0.2, indpb=0.1)
-toolbox.register("select", tools.selTournament, tournsize=4)
+toolbox.register("mutate", tools.mutGaussian, mu=0.0, sigma=0.5, indpb=0.3)
+toolbox.register("select", tools.selTournament, tournsize=3)
 
 # --- RUN EVOLUTION ---
 def main():
@@ -51,7 +51,7 @@ def main():
     stats.register("avg", np.mean)
     stats.register("max", np.max)
 
-    pop, log = algorithms.eaSimple(pop, toolbox, cxpb=0.1, mutpb=0.5, ngen=100,
+    pop, log = algorithms.eaSimple(pop, toolbox, cxpb=0.2, mutpb=0.4, ngen=100,
                                    stats=stats, halloffame=hof, verbose=True)
 
     print("Best fitness:", hof[0].fitness.values[0])

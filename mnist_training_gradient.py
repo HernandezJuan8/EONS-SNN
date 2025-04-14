@@ -14,8 +14,6 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
 import itertools
-
-
 data_path='mnist'
 batch_size = 128
 
