@@ -40,18 +40,18 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 toolbox.register("evaluate", evaluate)
 toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutGaussian, mu=0.0, sigma=0.2, indpb=0.1)
-toolbox.register("select", tools.selTournament, tournsize=4)
+toolbox.register("mutate", tools.mutGaussian, mu=0.0, sigma=0.4, indpb=0.2)
+toolbox.register("select", tools.selTournament, tournsize=5)
 
 # --- RUN EVOLUTION ---
 def main():
-    pop = toolbox.population(n=50)
-    hof = tools.HallOfFame(1)
+    pop = toolbox.population(n=200)
+    hof = tools.HallOfFame(5)
     stats = tools.Statistics(lambda ind: ind.fitness.values[0])
     stats.register("avg", np.mean)
     stats.register("max", np.max)
 
-    pop, log = algorithms.eaSimple(pop, toolbox, cxpb=0.1, mutpb=0.5, ngen=100,
+    pop, log = algorithms.eaSimple(pop, toolbox, cxpb=0.6, mutpb=0.4, ngen=150,
                                    stats=stats, halloffame=hof, verbose=True)
 
     print("Best fitness:", hof[0].fitness.values[0])
