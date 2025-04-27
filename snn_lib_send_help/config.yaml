@@ -1,0 +1,60 @@
+experiment: classification # Select experiment to run
+experiment_options: {} # Select experiment to run
+number_of_mutations: # Amount of mutations to apply, for a single network
+  type: fixed
+  value: 7
+neuron_parameters: # Which parameters a neuron has
+  threshold:
+    type: random_int
+    min: 0
+    max: 127
+  leak:
+    type: random_choice
+    values:
+    - 1
+    - 5
+    - 10
+    - 20
+    - 40
+synapse_parameters: # Which parameters a synapse has
+  weight:
+    type: random_int
+    min: 0
+    max: 127
+  delay:
+    type: random_int
+    min: 0
+    max: 15
+  exciting:
+    type: random_bool
+mutation_rates: # Probability of mutations to happen
+  add_node: 0.08
+  delete_node: 0.08
+  add_edge: 0.15
+  delete_edge: 0.15
+  node_param: 0.27
+  edge_param: 0.27
+generate_hidden_neurons:
+  type: random_int
+  min: 0
+  max: 2
+generate_synapses:
+  type: random_int
+  min: 0
+  max: 2
+reproduction_rates: # Probabilities to apply mutation/crossover/merge
+  mutation: 0.85
+  crossover: 0.1
+  merge: 0.05
+selection_type: tournament
+selection_arguments: {} # set custom arguments for the selection, e.g. k and p for tournament_selection
+random_factor: 0.1 # introduce new networks into the population in each epoch in percent
+num_best: 2 # keep this amount of best networks for new population
+population_size: 10 # (originally 500) amount of networks in each population
+num_generations: 5 # amount of epochs to simulate
+fitness_target: # Finish simulation early, if target is reached
+print_status: true # Print progress of the evolution
+save_stat_regularly: false # Save the stats after each epoch
+cache_evolution: true # Whether to reevalute existing networks during evolution
+cache_evolution_warm_up: true # Whether to include evaluated stats into the cache
+seed: # Seed for all network related random operations
