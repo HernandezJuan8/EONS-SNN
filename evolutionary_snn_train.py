@@ -41,11 +41,11 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 toolbox.register("evaluate", evaluate)
 toolbox.register("mate", tools.cxTwoPoint)
 toolbox.register("mutate", tools.mutGaussian, mu=0.0, sigma=0.2, indpb=0.1)
-toolbox.register("select", tools.selTournament, tournsize=4)
+toolbox.register("select", tools.selTournament, tournsize=3)
 
 # --- RUN EVOLUTION ---
 def main():
-    pop = toolbox.population(n=50)
+    pop = toolbox.population(n=500)
     hof = tools.HallOfFame(1)
     stats = tools.Statistics(lambda ind: ind.fitness.values[0])
     stats.register("avg", np.mean)
