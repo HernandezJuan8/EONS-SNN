@@ -22,10 +22,10 @@ creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", list, fitness=creator.FitnessMax)
 
 def init_weights(m):
-    if isinstance(m, nn.Conv2d):
-        init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='leaky_relu')  # He initialization for conv layers
-    elif isinstance(m, nn.Linear):
-        init.kaiming_normal_(m.weight, mode='fan_in', nonlinearity='leaky_relu')  # He initialization for fully connected layers
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+        nn.init.uniform_(m.weight, a=-0.1, b=0.1)  # Small uniform distribution
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0.0)
 
 # Create a function to initialize the weights of an individual (network)
 def initialize_individual():
@@ -40,8 +40,9 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 toolbox.register("evaluate", evaluate)
 toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", tools.mutGaussian, mu=0.0, sigma=0.5, indpb=0.3)
+toolbox.register("mutate", tools.mutGaussian, mu=0.0, sigma=0.3, indpb=0.3)
 toolbox.register("select", tools.selTournament, tournsize=3)
+
 
 # --- RUN EVOLUTION ---
 def main():
@@ -51,7 +52,7 @@ def main():
     stats.register("avg", np.mean)
     stats.register("max", np.max)
 
-    pop, log = algorithms.eaSimple(pop, toolbox, cxpb=0.2, mutpb=0.4, ngen=100,
+    pop, log = algorithms.eaSimple(pop, toolbox, cxpb=0.7, mutpb=0.2, ngen=100,
                                    stats=stats, halloffame=hof, verbose=True)
 
     print("Best fitness:", hof[0].fitness.values[0])

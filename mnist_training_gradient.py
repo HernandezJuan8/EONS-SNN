@@ -14,6 +14,8 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
 import itertools
+
+from evolutionary_base import EvoSNN
 data_path='mnist'
 batch_size = 128
 
@@ -41,6 +43,7 @@ def batch_accuracy(train_loader, net, num_steps):
   with torch.no_grad():
     total = 0
     acc = 0
+    correct = 0
     net.eval()
 
     train_loader = iter(train_loader)
@@ -49,10 +52,11 @@ def batch_accuracy(train_loader, net, num_steps):
       targets = targets.to(device)
       spk_rec, _ = forward_pass(net, num_steps, data)
 
-      acc += SF.accuracy_rate(spk_rec, targets) * spk_rec.size(1)
-      total += spk_rec.size(1)
+      _, predicted = spk_rec.sum(0).max(1)  # Sum over time, then get argmax
+      correct += (predicted == targets).sum().item()
+      total += targets.size(0)
 
-  return acc/total
+  return correct/total
 
 transform = transforms.Compose([
             transforms.Resize((28, 28)),
@@ -65,28 +69,13 @@ mnist_test = datasets.MNIST(data_path, train=False, download=True, transform=tra
 
 train_loader = DataLoader(mnist_train, batch_size=batch_size, shuffle=True, drop_last=True)
 test_loader = DataLoader(mnist_test, batch_size=batch_size, shuffle=True, drop_last=True)
-# Load the network onto CUDA if available
-net = nn.Sequential(
-    nn.Conv2d(1, 16, kernel_size=3, padding=1),  # Increase filters, reduce kernel size
-    nn.MaxPool2d(2),
-    snn.Leaky(beta=beta, spike_grad=spike_grad, init_hidden=True),
 
-    nn.Conv2d(16, 64, kernel_size=3, padding=1),  # Keep kernel size 3x3
-    nn.MaxPool2d(2),
-    snn.Leaky(beta=beta, spike_grad=spike_grad, init_hidden=True),
-
-    nn.Flatten(),
-    nn.Linear(64 * 7 * 7, 128),  # More neurons in dense layer
-    snn.Leaky(beta=beta, spike_grad=spike_grad, init_hidden=True),
-
-    nn.Linear(128, 10),
-    snn.Leaky(beta=beta, spike_grad=spike_grad, init_hidden=True, output=True)
-).to(device)
-
+snnModel = EvoSNN()
+net = snnModel.net
 # Temporal Dynamics
 num_steps = 25
 loss_fn = SF.ce_rate_loss()
-optimizer = torch.optim.Adam(net.parameters(), lr=1e-3, betas=(0.9, 0.999))
+optimizer = torch.optim.Adam(snnModel.net.parameters(), lr=1e-3, betas=(0.9, 0.999))
 num_epochs = 1
 loss_hist = []
 test_acc_hist = []
@@ -123,7 +112,7 @@ for epoch in range(num_epochs):
                 # Test set forward pass
                 test_acc = batch_accuracy(test_loader, net, num_steps)
                 print(f"Iteration {counter}, Test Acc: {test_acc * 100:.2f}%\n")
-                test_acc_hist.append(test_acc.item())
+                test_acc_hist.append(test_acc)
 
         counter += 1
     
