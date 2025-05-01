@@ -14,8 +14,8 @@ import snntorch as snn
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # --- PARAMETERS ---
-BATCH_SIZE = 128
-SUBSET_SIZE = 2048
+BATCH_SIZE = 32
+SUBSET_SIZE = 128
 cached_loader = None  # global for caching if needed
 time_steps = 25  # Number of time steps per sample
 firing_rates_log = []
