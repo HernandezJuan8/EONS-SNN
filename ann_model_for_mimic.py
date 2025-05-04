@@ -75,10 +75,26 @@ y = np.array(y)
 
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
     # Let's say X is a list of flattened ECG signals, y are 0/1 labels
-    X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y)
+    accuracys = []
+    random_events = np.arange(0,100)
+    for i in range(100):
+        X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y)
 
-    clf = RandomForestClassifier()
-    clf.fit(X_train, y_train)
+        clf = RandomForestClassifier()
+        clf.fit(X_train, y_train)
 
-    print("Accuracy:", clf.score(X_test, y_test))
+        accuracys.append(clf.score(X_test, y_test))
+
+    plt.figure()
+    plt.title("Random Forest Classifier (Different Train Test Splits)")
+    plt.xlabel("Random Seed ID")
+    plt.ylabel("Accuracy")
+
+    mean = np.mean(accuracys)
+    mean_accuracy = np.full_like(random_events, fill_value=mean, dtype=float)
+    plt.plot(random_events, mean_accuracy, label=f"Mean: {mean}")
+    plt.plot(random_events, accuracys)
+    plt.legend()
+    plt.show()
